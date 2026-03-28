@@ -1,7 +1,18 @@
 import csv
 import os
 import pandas as pd
-import pickle
+
+from itertools import product
+
+# Set the baby gender and source names
+baby_gender = 'F'
+source_names = ['alison', 'phillip', 'michael', 'ginny', 'janet']
+
+# Generate a list of all possible combinations of 5 letters from the names list
+source_names =[list(set(name.lower())) for name in source_names]
+string_matches = list(product(*source_names))
+for n in range(len(string_matches)):
+    string_matches[n] = ''.join(sorted(string_matches[n]))
 
 # Read all txt files from the names folder
 names_folder = os.path.join(os.path.dirname(__file__), 'names')
@@ -13,39 +24,13 @@ for filename in os.listdir(names_folder):
         df = pd.read_csv(filepath, sep=',', header=None)
         for row in df.itertuples(index=False):
             # grabbing all female names that are 5 letters long
-            if row[1] == 'F' and len(row[0]) == 5:
-                baby_names.add(row[0])
+            if row[1] == baby_gender and len(row[0]) == len(source_names):
+                if ''.join(sorted(row[0].lower())) in string_matches:
+                    baby_names.add(row[0])
 
-# Write the list of baby names to a pickle file
-os.makedirs('names', exist_ok=True)
-with open(os.path.join('names', 'female_baby_names.pkl'), 'wb') as f:
-    pickle.dump(baby_names, f)
-
-# Generate a list of all possible combinations of 5 letters from the names list
-from itertools import product
-
-alison = ['a', 'l', 'i', 's', 'o', 'n']
-phillip = ['p', 'h', 'i', 'l', 'l', 'i', 'p']
-michael = ['m', 'i', 'c', 'h', 'a', 'e', 'l']
-ginny = ['g', 'i', 'n', 'n', 'y']
-janet = ['j', 'a', 'n', 'e', 't']
-
-string_matches = list(product(alison, phillip, michael, ginny, janet))
-
-for n in range(len(string_matches)):
-    string_matches[n] = ''.join(sorted(string_matches[n]))
-
-# Check if any of the combinations match a name in the baby names list
-with open(os.path.join('names', 'female_baby_names.pkl'), 'rb') as f:
-    baby_names = pickle.load(f)
-
-matching_names = list()
-for name in baby_names:
-    if ''.join(sorted(name.lower())) in string_matches:
-        matching_names.append(name)
-
-matching_names.sort()
-matching_names = [[item] for item in matching_names]
+baby_names = list(baby_names)
+baby_names.sort()   
+baby_names = [[item] for item in baby_names]
 
 def save_list_to_csv(data_list, filename):
     """
@@ -79,4 +64,4 @@ def save_list_to_csv(data_list, filename):
     except OSError as e:
         print(f"Error writing to file: {e}")
 
-save_list_to_csv(matching_names, "matching_names.csv")
+save_list_to_csv(baby_names, "matching_names.csv")
