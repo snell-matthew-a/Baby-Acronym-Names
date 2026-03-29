@@ -9,6 +9,7 @@ source_names = ["alison", "phillip", "michael", "ginny", "janet"]
 
 # names folder with census data
 names_folder = os.path.join(os.path.dirname(__file__), "names")
+names_file = os.path.join(os.path.dirname(__file__), "names", "tally_names.csv")
 
 
 def tally_names(names_folder):
@@ -28,7 +29,7 @@ def tally_names(names_folder):
             result = result.groupby(["name", "gender"]).sum().reset_index()
         print(f"Processed file: {filename}")
 
-    result.to_csv("tally_names.csv", index=False)
+    result.to_csv("names/tally_names.csv", index=False)
     print("Data successfully saved to 'tally_names.csv'")
 
 
@@ -74,4 +75,4 @@ def create_matching_name_set(source_names):
     return sorted_combinations
 
 
-validate_names("tally_names.csv", baby_gender, source_names)
+validate_names(names_file, baby_gender, source_names)
