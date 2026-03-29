@@ -8,35 +8,61 @@ from itertools import product
 baby_gender = "F"
 source_names = ["alison", "phillip", "michael", "ginny", "janet"]
 
-# Generate a list of all possible combinations of 5 letters from the names list
-source_names = [list(set(name.lower())) for name in source_names]
-string_matches = list(product(*source_names))
-for n in range(len(string_matches)):
-    string_matches[n] = "".join(sorted(string_matches[n]))
-match_set = set(string_matches)  # Convert to set for faster lookups
-
-# Read all txt files from the names folder
+# names folder with census data
 names_folder = os.path.join(os.path.dirname(__file__), "names")
-baby_names = dict()
 
-for filename in os.listdir(names_folder):
-    if filename.endswith(".txt"):
-        filepath = os.path.join(names_folder, filename)
-        df = pd.read_csv(filepath, sep=",", header=None)
-        for row in df.itertuples(index=False):
-            # grabbing all female names that are 5 letters long
-            if row[1] == baby_gender and len(row[0]) == len(
-                source_names
-            ):  # First check name gender and length
-                if (
-                    "".join(sorted(row[0].lower())) in match_set
-                ):  # Then check it against all the combinations
-                    baby_names[row[0]] = baby_names.get(row[0], 0) + row[2]
-    print(f"Processed file: {filename}")
 
-baby_names = sorted(baby_names.items(), key=lambda x: x[1], reverse=True)
-baby_names = [[item[0], item[1]] for item in baby_names]
-baby_names.insert(0, ["Name", "Count"])  # Add header row
+def validate_names(names_folder, baby_gender, source_names):
+    """
+    Validates baby names against a set of source names and saves matching names to a CSV file.
+
+    :param names_folder: Folder containing baby name data files
+    :param baby_gender: Gender of the baby names to validate (e.g., "F" for female)
+    :param source_names: List of source names to match against
+    """
+    match_set = create_matching_name_set(source_names)
+
+    baby_names = dict()
+    for filename in os.listdir(names_folder):
+        if filename.endswith(".txt"):
+            filepath = os.path.join(names_folder, filename)
+            df = pd.read_csv(filepath, sep=",", header=None)
+            for row in df.itertuples(index=False):
+                if row[1] == baby_gender and len(row[0]) == len(
+                    source_names
+                ):  # First check name gender and length
+                    if (
+                        "".join(sorted(row[0].lower())) in match_set
+                    ):  # Then check it against all the combinations
+                        baby_names[row[0]] = baby_names.get(row[0], 0) + row[2]
+        print(f"Processed file: {filename}")
+
+    baby_names = sorted(baby_names.items(), key=lambda x: x[1], reverse=True)
+    baby_names = [[item[0], item[1]] for item in baby_names]
+    baby_names.insert(0, ["Name", "Count"])  # Add header row
+
+    save_list_to_csv(baby_names, "matching_names.csv")
+
+
+def create_matching_name_set(source_names):
+    """
+    Creates a set of all possible combinations of letters from the source names.
+
+    :param source_names: List of source names
+    :return: Set of unique combinations of letters
+    """
+    # Generate a list of unique letters from each name
+    unique_letters = [set(name.lower()) for name in source_names]
+
+    # Generate all possible combinations of letters (one from each name)
+    string_matches = list(product(*unique_letters))
+
+    # Sort and join the letters to create a standardized format
+    sorted_combinations = {
+        "".join(sorted(combination)) for combination in string_matches
+    }
+
+    return sorted_combinations
 
 
 def save_list_to_csv(data_list, filename):
@@ -72,4 +98,4 @@ def save_list_to_csv(data_list, filename):
         print(f"Error writing to file: {e}")
 
 
-save_list_to_csv(baby_names, "matching_names.csv")
+validate_names(names_folder, baby_gender, source_names)
