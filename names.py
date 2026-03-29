@@ -1,4 +1,3 @@
-import csv
 import os
 import pandas as pd
 
@@ -12,7 +11,28 @@ source_names = ["alison", "phillip", "michael", "ginny", "janet"]
 names_folder = os.path.join(os.path.dirname(__file__), "names")
 
 
-def validate_names(names_folder, baby_gender, source_names):
+def tally_names(names_folder):
+    """
+    Reads all of the baby names and combines the totals for each name across all years.
+    Writes out one csv of boy names and one of girl names
+
+    :param names_folder: Path to the folder containing the baby name data files
+    """
+    colNames = ["name", "gender", "count"]
+    result = pd.DataFrame(columns=colNames)
+    for filename in os.listdir(names_folder):
+        if filename.endswith(".txt"):
+            filepath = os.path.join(names_folder, filename)
+            df2 = pd.read_csv(filepath, sep=",", header=None, names=colNames)
+            result = pd.concat([result, df2], ignore_index=True)
+            result = result.groupby(["name", "gender"]).sum().reset_index()
+        print(f"Processed file: {filename}")
+
+    result.to_csv("tally_names.csv", index=False)
+    print("Data successfully saved to 'tally_names.csv'")
+
+
+def validate_names(names_file, baby_gender, source_names):
     """
     Validates baby names against a set of source names and saves matching names to a CSV file.
 
@@ -22,26 +42,15 @@ def validate_names(names_folder, baby_gender, source_names):
     """
     match_set = create_matching_name_set(source_names)
 
-    baby_names = dict()
-    for filename in os.listdir(names_folder):
-        if filename.endswith(".txt"):
-            filepath = os.path.join(names_folder, filename)
-            df = pd.read_csv(filepath, sep=",", header=None)
-            for row in df.itertuples(index=False):
-                if row[1] == baby_gender and len(row[0]) == len(
-                    source_names
-                ):  # First check name gender and length
-                    if (
-                        "".join(sorted(row[0].lower())) in match_set
-                    ):  # Then check it against all the combinations
-                        baby_names[row[0]] = baby_names.get(row[0], 0) + row[2]
-        print(f"Processed file: {filename}")
+    df = pd.read_csv(names_file, sep=",", header=0)
+    df = df[df["gender"] == baby_gender]
+    df = df[df["name"].apply(lambda x: len(x) == len(source_names))]
+    df = df[df["name"].apply(lambda x: "".join(sorted(x.lower())) in match_set)]
+    df = df.drop(columns="gender")
+    df = df.sort_values(by="count", ascending=False).reset_index(drop=True)
 
-    baby_names = sorted(baby_names.items(), key=lambda x: x[1], reverse=True)
-    baby_names = [[item[0], item[1]] for item in baby_names]
-    baby_names.insert(0, ["Name", "Count"])  # Add header row
-
-    save_list_to_csv(baby_names, "matching_names.csv")
+    df.to_csv("matching_names.csv", index=False)
+    print("Matching names successfully saved to 'matching_names.csv'")
 
 
 def create_matching_name_set(source_names):
@@ -65,37 +74,4 @@ def create_matching_name_set(source_names):
     return sorted_combinations
 
 
-def save_list_to_csv(data_list, filename):
-    """
-    Saves a list (1D or 2D) to a CSV file.
-
-    :param data_list: List of values or list of lists
-    :param filename: Output CSV file name
-    """
-    # Validate input type
-    if not isinstance(data_list, list):
-        raise TypeError("data_list must be a list.")
-    if not filename.lower().endswith(".csv"):
-        raise ValueError("Filename must have a .csv extension.")
-
-    # Ensure directory exists
-    os.makedirs(os.path.dirname(filename) or ".", exist_ok=True)
-
-    try:
-        with open(filename, mode="w", newline="", encoding="utf-8") as file:
-            writer = csv.writer(file)
-
-            # If it's a list of lists, write rows directly
-            if all(isinstance(row, (list, tuple)) for row in data_list):
-                writer.writerows(data_list)
-            else:
-                # Convert 1D list to a single row
-                writer.writerow(data_list)
-
-        print(f"Data successfully saved to '{filename}'")
-
-    except OSError as e:
-        print(f"Error writing to file: {e}")
-
-
-validate_names(names_folder, baby_gender, source_names)
+validate_names("tally_names.csv", baby_gender, source_names)
